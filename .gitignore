@@ -2,6 +2,7 @@
 backend/myenv/
 backend/*.pyc
 backend/__pycache__/
+backend/app/__pycache__/
 backend/Library/
 backend/app.db
 backend/share/
