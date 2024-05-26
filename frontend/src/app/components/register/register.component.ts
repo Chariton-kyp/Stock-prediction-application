@@ -10,7 +10,7 @@ import { CommonModule } from '@angular/common';
 import { HttpClientModule } from '@angular/common/http';
 import { Component } from '@angular/core';
 import { FormControl, FormGroup, ReactiveFormsModule } from '@angular/forms';
-import { RouterModule } from '@angular/router';
+import { Router, RouterModule } from '@angular/router';
 
 import { ApiService } from '../../services/api.service';
 
@@ -39,7 +39,8 @@ export class RegisterComponent {
 
   constructor(
     private apiService: ApiService,
-    private messageService: MessageService
+    private messageService: MessageService,
+    public router: Router
   ) {
     this.formGroup = new FormGroup({
       username: new FormControl<string | null>(null),
@@ -62,6 +63,7 @@ export class RegisterComponent {
           summary: 'Success',
           detail: response.message,
         });
+        this.router.navigate(['/login']);
       },
       error: (error) => {
         let errorMessage = 'An error occurred. Please try again.';

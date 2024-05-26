@@ -1,23 +1,23 @@
-import io
+from flask import Blueprint, request, jsonify
 import os
 from flask_cors import CORS
 from flask import Blueprint, request, jsonify, session, make_response, current_app
-from sklearn.preprocessing import MinMaxScaler
-from app.models import User
+from app.models import User, Stock
 from app import db
-from app.models import Image
-from app.prediction import generate_prediction
 from werkzeug.security import check_password_hash, generate_password_hash
+import datetime
 import jwt
 import datetime
 import time
 import yfinance as yf
-from sklearn.linear_model import LinearRegression
 import numpy as np
-from app.trainingModel import train_model, predict_price
 import tensorflow as tf
+import joblib
+from app.methods_for_training_model import fetch_stock_data, create_features
+
 
 api_bp = Blueprint('api', __name__)
+base_dir = os.path.dirname(os.path.abspath(__file__))
 CORS(api_bp)
 
 
@@ -60,7 +60,6 @@ def register():
 @api_bp.route('/login', methods=['POST'])
 def login():
     data = request.get_json()
-    print(data)
     username = data.get('username')
     password = data.get('password')
 
@@ -80,28 +79,6 @@ def login():
         return jsonify({'message': 'Invalid credentials'}), 401
 
 
-@api_bp.route('/predict', methods=['POST'])
-def predict():
-    if 'image' not in request.files:
-        return jsonify({'message': 'No image uploaded'})
-
-    image_file = request.files['image']
-    filename = image_file.filename
-
-    # Read the image file and convert it to bytes
-    image_bytes = image_file.read()
-
-    # Create a new Image instance and save it to the database
-    new_image = Image(filename=filename, data=image_bytes)
-    db.session.add(new_image)
-    db.session.commit()
-
-    # Pass the image data to the prediction function
-    prediction = generate_prediction(io.BytesIO(image_bytes))
-
-    return jsonify({'prediction': prediction})
-
-
 @api_bp.route('/logout', methods=['POST'])
 def logout():
     session.pop('user_id', None)
@@ -110,33 +87,11 @@ def logout():
 
 @api_bp.route('/stocks', methods=['GET'])
 def get_available_stocks():
-    # Define a list of stock symbols
-    stock_symbols = [
-        # Greek stocks
-        'MYTIL.AT', 'OPAP.AT', 'ETE.AT', 'ALPHA.AT', 'EUROB.AT', 'PPC.AT', 'EXAE.AT', 'LAMDA.AT', 'MOH.AT', 'ELPE.AT',
-
-        # NASDAQ stocks
-        'AAPL', 'MSFT', 'AMZN', 'GOOGL', 'FB', 'TSLA', 'NVDA', 'NFLX', 'PYPL', 'INTC', 'CSCO', 'CMCSA', 'PEP', 'ADBE', 'COST',
-        'AMGN', 'AVGO', 'TXN', 'CHTR', 'QCOM', 'GILD', 'MDLZ', 'FISV', 'BKNG', 'INTU', 'ADP', 'REGN', 'AMD', 'JD',
-        'MU', 'AMAT', 'ILMN', 'LRCX', 'NTES', 'MELI', 'BIDU', 'WDAY', 'ADSK', 'BIIB', 'EBAY', 'NXPI', 'DOCU', 'KLAC', 'WBA',
-
-        # S&P 500 stocks
-        'AAPL', 'MSFT', 'AMZN', 'FB', 'BRK-B', 'GOOGL', 'GOOG', 'JNJ', 'JPM', 'V', 'PG', 'XOM', 'UNH', 'MA', 'INTC', 'VZ',
-        'DIS', 'HD', 'MRK', 'PFE', 'KO', 'BAC', 'T', 'PEP', 'CMCSA', 'CSCO', 'NFLX', 'NVDA', 'ADBE', 'ABT', 'COST', 'WMT',
-        'NKE', 'CRM', 'AMGN', 'MCD', 'MDT', 'ABBV', 'PYPL', 'NEE', 'BMY', 'UNP', 'AVGO', 'TXN', 'ACN', 'QCOM', 'HON', 'C'
-    ]
-
-    stocks = [{'code': symbol} for symbol in stock_symbols]
-    return jsonify(stocks)
-
-
-@api_bp.route('/stock/<string:code>', methods=['GET'])
-def get_stock_name(code):
-    try:
-        stock_info = yf.Ticker(code).info
-        return jsonify({'name': stock_info['longName']})
-    except:
-        return jsonify({'name': code})
+    stocks = Stock.query.all()
+    print(stocks)
+    stock_list = [{'code': stock.symbol, 'name': stock.name}
+                  for stock in stocks]
+    return jsonify(stock_list)
 
 
 @api_bp.route('/stocks/<symbol>', methods=['GET'])
@@ -160,78 +115,49 @@ def get_stock_data(symbol):
 
 
 @api_bp.route('/stocks/<symbol>/predict', methods=['GET'])
-def get_stock_prediction(symbol):
-    # Fetch historical stock data using yfinance
-    stock_data = yf.download(symbol, start='2022-01-01',
-                             end=datetime.datetime.now().strftime('%Y-%m-%d'))
+def predict_stock(symbol):
+    model = tf.keras.models.load_model(
+        'app/stock_prediction_tuned_model.keras')
+    scaler = joblib.load('app/tuned_scaler.pkl')
 
-    # Extract the closing prices
-    closing_prices = stock_data['Close'].values.reshape(-1, 1)
+    # Fetch data for the symbol
+    data = fetch_stock_data(symbol, period='2y')  # Fetch 2 years data
+    features = create_features(data)
+    scaled_features = scaler.transform(features.values)
 
-    # Create and train the linear regression model
-    model = LinearRegression()
-    model.fit(np.arange(len(closing_prices)).reshape(-1, 1), closing_prices)
+    # Historical data for plotting
+    historical_close_prices = data['Close'][-720:].tolist()
+    # Assuming data has a DateTimeIndex
+    historical_dates = data.index[-720:].strftime('%Y-%m-%d').tolist()
 
-    # Generate predictions for the next 30 days
-    future_dates = np.arange(len(closing_prices), len(
-        closing_prices) + 30).reshape(-1, 1)
-    predicted_prices = model.predict(future_dates)
+    # Prepare the initial input for prediction (last 60 days)
+    input_features = np.array([scaled_features[-60:]])
 
-    # Prepare the response data
-    data = {
+    predictions = []
+    for _ in range(7):  # Predict for 7 days
+        daily_prediction = model.predict(input_features)
+        predictions.append(daily_prediction[0, 0])
+
+        next_input_features = np.roll(input_features, -1, axis=1)
+        next_day_features = scaled_features[-1].copy()
+        # Assumed index 3 is the target feature
+        next_day_features[3] = daily_prediction[0, 0]
+        next_input_features[0, -1, :] = next_day_features
+        input_features = next_input_features
+
+    predictions_extended = np.tile(scaled_features[-1], (7, 1))
+    predictions_extended[:, 3] = predictions
+    inverse_predictions = scaler.inverse_transform(predictions_extended)[:, 3]
+
+    # Generate prediction dates
+    last_date = datetime.datetime.strptime(historical_dates[-1], '%Y-%m-%d')
+    predicted_dates = [(last_date + datetime.timedelta(days=i)
+                        ).strftime('%Y-%m-%d') for i in range(1, 8)]
+
+    return jsonify({
         'symbol': symbol,
-        'predicted_prices': predicted_prices.flatten().tolist()
-    }
-
-    return jsonify(data)
-
-
-@api_bp.route('/predict/<string:code>', methods=['GET'])
-def predict_stock_price(code):
-    model_file = f"{code}_model.h5"
-    if not os.path.exists(model_file):
-        return jsonify({'error': f'Model for {code} not found. Please train the model first.'})
-
-    try:
-        model = tf.keras.models.load_model(model_file)
-        stock_data = yf.download(
-            code, start='2022-01-01', end=datetime.datetime.now().strftime('%Y-%m-%d'))
-        stock_data = stock_data[['Close']]
-
-        # Scale the data
-        scaler = MinMaxScaler(feature_range=(0, 1))
-        scaled_data = scaler.fit_transform(stock_data)
-
-        # Create features for prediction
-        lookback = 60
-        X = []
-        for i in range(lookback, len(scaled_data)):
-            X.append(scaled_data[i - lookback:i])
-        X = np.array(X)
-
-        # Reshape the input data to match the model's expected shape
-        X = np.reshape(X, (X.shape[0], X.shape[1], 1))
-
-        # Make predictions
-        predicted_prices = model.predict(X)
-        predicted_prices = scaler.inverse_transform(predicted_prices)
-
-        return jsonify({'prices': predicted_prices.flatten().tolist()})
-    except Exception as e:
-        print(f"Error predicting stock prices for {code}: {str(e)}")
-        return jsonify({'error': 'Failed to predict stock prices'})
-
-
-@api_bp.route('/train/<string:code>', methods=['POST'])
-def train_selected_model(code):
-    try:
-        model = train_model(code)
-        model.save(f"{code}_model.h5")
-        print(f"Training completed successfully for {code}")
-        return jsonify({'message': f'Training completed successfully for {code}'})
-    except Exception as e:
-        print(f"Error training model for {code}: {str(e)}")
-        return jsonify({'error': f'Failed to train model for {code}'})
-
-
-CORS(api_bp, resources={r"/*": {"origins": "http://localhost:4200"}})
+        'historical_prices': historical_close_prices,
+        'historical_dates': historical_dates,
+        'predicted_prices': inverse_predictions.tolist(),
+        'predicted_dates': predicted_dates
+    })

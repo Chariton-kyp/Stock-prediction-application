@@ -14,4 +14,10 @@ def create_app():
     from app.routes import api_bp
     app.register_blueprint(api_bp)
 
+    with app.app_context():
+        db.create_all()
+        # Import fetch_and_store_stocks here to avoid circular import
+        from app.fetch_stocks import fetch_and_store_stocks
+        fetch_and_store_stocks(app)
+
     return app
