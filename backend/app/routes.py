@@ -2,7 +2,7 @@ from flask import Blueprint, request, jsonify
 import os
 from flask_cors import CORS
 from flask import Blueprint, request, jsonify, session, make_response, current_app
-from app.models import User, Stock
+from app.models import Helpdesk, User, Stock
 from app import db
 from werkzeug.security import check_password_hash, generate_password_hash
 import datetime
@@ -83,6 +83,41 @@ def login():
 def logout():
     session.pop('user_id', None)
     return jsonify({'message': 'User logged out successfully'})
+
+
+@api_bp.route('/helpdesk', methods=['POST'])
+def helpdesk():
+    data = request.get_json()
+    firstname = data.get('firstname')
+    lastname = data.get('lastname')
+    email = data.get('email')
+    message = data.get('message')
+
+    if (data.get('user_id') is not None):
+        user_id = data.get('user_id')
+    else:
+        user_id = db.session.query(User.id).filter(
+            User.email == email).first()[0]
+
+    new_helpdesk = Helpdesk(firstname=firstname, lastname=lastname,
+                            email=email, message=message, user_id=user_id)
+    db.session.add(new_helpdesk)
+
+    max_retries = 3
+    retry_delay = 1  # seconds
+
+    for attempt in range(max_retries):
+        try:
+            db.session.commit()
+            break
+        except Exception as e:
+            if attempt < max_retries - 1:
+                db.session.rollback()
+                time.sleep(retry_delay)
+            else:
+                raise e
+
+    return make_response(jsonify({'message': 'Helpdesk ticket created successfully'}), 201)
 
 
 @api_bp.route('/stocks', methods=['GET'])
