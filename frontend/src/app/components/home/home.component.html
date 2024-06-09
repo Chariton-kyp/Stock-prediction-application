@@ -39,7 +39,24 @@
           ></button> </a
         >}
       </li>
+      <li class="relative">
+        @if (isUserLoggedIn()){
+        <a
+          pRipple
+          class="flex px-6 p-3 h-full lg:px-3 lg:py-2 align-items-center text-600 border-left-2 lg:border-bottom-2 lg:border-left-none border-transparent hover:border-blue-500 font-medium cursor-pointer transition-colors transition-duration-150"
+        >
+          <i class="pi pi-question-circle mr-2"></i>
+          <button
+            pButton
+            pRipple
+            label="Helpdesk Questions"
+            [routerLink]="['/helpdesk']"
+            class="p-button-text font-bold"
+          ></button> </a
+        >}
+      </li>
     </ul>
+
     <div
       class="flex justify-content-between lg:block border-top-1 lg:border-top-none surface-border py-3 lg:py-0 mt-3 lg:mt-0"
     >
@@ -181,7 +198,7 @@
       <ul class="list-none p-0 m-0 mt-6 text-white">
         <li class="flex align-items-center mb-3">
           <i class="pi pi-phone mr-2"></i>
-          <span>+1 (123) 456-7890</span>
+          <span>+30 210 12 34 567</span>
         </li>
         <li class="flex align-items-center mb-3">
           <i class="pi pi-twitter mr-2"></i>
@@ -194,11 +211,15 @@
       </ul>
     </div>
     <div class="col-12 md:col-6">
-      <div class="p-fluid formgrid grid px-4 py-8 md:px-6 lg:px-8">
+      <div
+        class="p-fluid formgrid grid px-4 py-8 md:px-6 lg:px-8"
+        [formGroup]="formGroup"
+      >
         <div class="field col-12 lg:col-6 mb-4">
           <input
             id="firstname"
             type="text"
+            formControlName="firstname"
             class="py-3 px-2 text-lg"
             pInputText
             placeholder="First Name"
@@ -208,6 +229,7 @@
           <input
             id="lastname"
             type="text"
+            formControlName="lastname"
             class="py-3 px-2 text-lg"
             pInputText
             placeholder="Last Name"
@@ -217,6 +239,7 @@
           <input
             id="email"
             type="text"
+            formControlName="email"
             pInputText
             class="py-3 px-2 text-lg"
             placeholder="Email"
@@ -227,6 +250,7 @@
             id="message"
             pInputTextarea
             rows="3"
+            formControlName="message"
             [autoResize]="true"
             class="py-3 px-2 text-lg"
             placeholder="Message"
@@ -240,12 +264,14 @@
             label="Submit"
             icon="pi pi-envelope"
             class="px-5 py-3 w-auto"
+            (click)="submitHelpdesk()"
           ></button>
         </div>
       </div>
     </div>
   </div>
 </div>
+<p-toast />
 <div class="bg-gray-900 px-4 py-8 md:px-6 lg:px-8">
   <div class="bg-gray-900">
     <div class="grid">
@@ -269,8 +295,8 @@
           123 Stock Street, Investville, Finance Country
         </div>
         <div class="text-white mb-3">
-          <i class="pi pi-phone surface-800 border-round p-1 mr-2"></i>(123)
-          456-7890
+          <i class="pi pi-phone surface-800 border-round p-1 mr-2"></i>+30 210
+          12 34 567
         </div>
         <div class="text-white mb-3">
           <i class="pi pi-inbox surface-800 border-round p-1 mr-2"></i

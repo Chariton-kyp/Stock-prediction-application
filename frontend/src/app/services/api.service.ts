@@ -18,4 +18,8 @@ export class ApiService {
   getStockPrediction(stock: string): Observable<any> {
     return this.http.get(`${this.baseUrl}/predict?stock=${stock}`);
   }
+
+  helpdeskSubmit(ticket: any): Observable<any> {
+    return this.http.post(`${this.baseUrl}/helpdesk`, ticket);
+  }
 }

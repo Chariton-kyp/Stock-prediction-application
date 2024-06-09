@@ -42,6 +42,13 @@ export const routes: Routes = [
       ),
   },
   {
+    path: 'helpdesk',
+    loadComponent: () =>
+      import(
+        './components/helpdesk-logged-in-user-form/helpdesk-logged-in-user-form.component'
+      ).then((m) => m.HelpdeskLoggedInUserFormComponent),
+  },
+  {
     path: '**',
     loadComponent: () =>
       import('./components/page-not-found/page-not-found.component').then(

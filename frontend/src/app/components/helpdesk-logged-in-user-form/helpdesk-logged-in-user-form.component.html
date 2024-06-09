@@ -1,5 +1,5 @@
-<div class="flex container" [formGroup]="formGroup">
-  <div class="surface-section w-full md:w-6 p-6 md:p-8">
+<div class="flex container">
+  <div class="surface-section w-full">
     <div class="mb-5">
       <a [routerLink]="['/']"
         ><img
@@ -8,70 +8,45 @@
           height="80"
           class="mb-3"
       /></a>
-      <div class="text-900 text-3xl font-medium mb-3">Welcome Back</div>
-      <span class="text-600 font-medium mr-2">Don't have an account?</span>
-      <a
-        class="font-medium no-underline text-blue-500 cursor-pointer"
-        [routerLink]="['/register']"
-        >Create today!</a
-      >
     </div>
-    <div>
-      <label for="username" class="block text-900 font-medium mb-2"
-        >Username</label
+    <div *ngIf="helpdeskData" class="mb-4 w-full">
+      <p-table
+        [value]="helpdeskData"
+        [tableStyle]="{ 'min-width': '50rem' }"
+        class="p-datatable-striped p-datatable-gridlines"
       >
-      <input
-        id="username"
-        type="text"
-        placeholder="Username"
-        pInputText
-        class="w-full mb-3 p-3"
-        formControlName="username"
-      />
-
-      <label for="password2" class="block text-900 font-medium mb-2"
-        >Password</label
-      >
-      <input
-        id="password2"
-        type="password"
-        placeholder="Password"
-        pInputText
-        class="w-full mb-3 p-3"
-        formControlName="password"
-      />
-
-      <div class="flex align-items-center justify-content-between mb-6">
-        <div class="flex align-items-center">
-          <p-checkbox
-            id="rememberme"
-            [binary]="true"
-            styleClass="mr-2"
-          ></p-checkbox>
-          <label for="rememberme2">Remember me</label>
-        </div>
-        <a
-          class="font-medium no-underline ml-2 text-blue-500 text-right cursor-pointer"
-          [routerLink]="['/forgot-password']"
-          >Forgot password?</a
-        >
-      </div>
-
-      <button
-        pButton
-        pRipple
-        label="Sign In"
-        icon="pi pi-user"
-        class="w-full p-3"
-        (click)="login()"
-      ></button>
+        <ng-template pTemplate="caption">
+          <div class="flex align-items-center justify-content-between p-2">
+            <span class="font-bold text-lg">Helpdesk Issues</span>
+          </div>
+        </ng-template>
+        <ng-template pTemplate="header">
+          <tr>
+            <th pSortableColumn="firstname" class="p-3">
+              Firstname <p-sortIcon field="firstname"></p-sortIcon>
+            </th>
+            <th pSortableColumn="lastname" class="p-3">
+              Lastname <p-sortIcon field="lastname"></p-sortIcon>
+            </th>
+            <th pSortableColumn="email" class="p-3">
+              Email <p-sortIcon field="email"></p-sortIcon>
+            </th>
+            <th pSortableColumn="message" class="p-3">
+              Message <p-sortIcon field="message"></p-sortIcon>
+            </th>
+          </tr>
+        </ng-template>
+        <ng-template pTemplate="body" let-row>
+          <tr>
+            <td class="p-3">{{ row.firstname }}</td>
+            <td class="p-3">{{ row.lastname }}</td>
+            <td class="p-3">{{ row.email }}</td>
+            <td class="p-3">{{ row.message }}</td>
+          </tr>
+        </ng-template>
+      </p-table>
     </div>
   </div>
-  <div
-    class="hidden md:block w-6 bg-no-repeat bg-cover"
-    style="background-image: url('assets/images/signin.jpg')"
-  ></div>
-  <p-toast />
 </div>
 <div class="bg-gray-900 px-4 py-8 md:px-6 lg:px-8">
   <div class="bg-gray-900">

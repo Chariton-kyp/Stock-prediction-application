@@ -96,11 +96,13 @@ def helpdesk():
     if (data.get('user_id') is not None):
         user_id = data.get('user_id')
     else:
-        user_id = db.session.query(User.id).filter(
-            User.email == email).first()[0]
+        query_result = db.session.query(
+            User.id).filter(User.email == email).first()
+        user_id = query_result[0] if query_result else None
 
     new_helpdesk = Helpdesk(firstname=firstname, lastname=lastname,
                             email=email, message=message, user_id=user_id)
+    print(new_helpdesk)
     db.session.add(new_helpdesk)
 
     max_retries = 3
@@ -118,6 +120,14 @@ def helpdesk():
                 raise e
 
     return make_response(jsonify({'message': 'Helpdesk ticket created successfully'}), 201)
+
+
+@api_bp.route('/helpdesk/<email>', methods=['GET'])
+def get_helpdesk_tickets(email):
+    helpdesk_tickets = Helpdesk.query.filter_by(email=email).all()
+    tickets = [{'firstname': ticket.firstname, 'lastname': ticket.lastname,
+                'email': ticket.email, 'message': ticket.message} for ticket in helpdesk_tickets]
+    return jsonify(tickets)
 
 
 @api_bp.route('/stocks', methods=['GET'])
