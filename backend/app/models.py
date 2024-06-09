@@ -18,3 +18,15 @@ class Stock(db.Model):
 
     def __repr__(self):
         return f'<Stock {self.symbol} - {self.name}>'
+
+
+class Helpdesk(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    firstname = db.Column(db.String(200), nullable=False)
+    lastname = db.Column(db.String(200), nullable=False)
+    email = db.Column(db.String(200), nullable=False)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    user = db.relationship('User', backref=db.backref('helpdesk', lazy=True))
+
+    def __repr__(self):
+        return f'<Helpdesk {self.name} - {self.email} - {self.phone} - {self.message}>'
